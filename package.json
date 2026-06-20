@@ -1,0 +1,23 @@
+{
+  "name": "kayala-farm-pwa",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "icons": "node scripts/generate-icons.mjs",
+    "dev": "vite",
+    "build": "npm run icons && vite build",
+    "preview": "vite preview",
+    "postinstall": "node scripts/generate-icons.mjs"
+  },
+  "dependencies": {
+    "firebase": "^11.6.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "sharp": "^0.33.5",
+    "vite": "^6.2.0"
+  }
+}

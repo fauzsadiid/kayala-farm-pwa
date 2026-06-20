@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <rect width="512" height="512" rx="112" fill="#11834d"/>
+  <rect x="32" y="32" width="448" height="448" rx="96" fill="#0a5c38" opacity="0.35"/>
+  <ellipse cx="256" cy="268" rx="118" ry="148" fill="#f2c94c" opacity="0.95"/>
+  <ellipse cx="256" cy="248" rx="92" ry="118" fill="#ffe08a" opacity="0.45"/>
+  <path d="M256 148c-52 0-88 52-88 112 0 46 28 82 88 82s88-36 88-82c0-60-36-112-88-112Z" stroke="#fff" stroke-width="8" opacity="0.25"/>
+  <text x="256" y="430" text-anchor="middle" fill="#f2c94c" font-family="Arial,sans-serif" font-weight="800" font-size="52" letter-spacing="6">KAYALA</text>
+</svg>
