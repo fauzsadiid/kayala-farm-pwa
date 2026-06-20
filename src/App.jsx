@@ -140,6 +140,23 @@ function getProdukAktifPertama(list = []) {
   return active?.name || list[0]?.name || DEFAULT_ACTIVE_PRODUCT || "";
 }
 
+function normalizeFirebaseList(value) {
+  if (!value) return [];
+  if (Array.isArray(value)) return value;
+  if (typeof value === "object") {
+    return Object.keys(value)
+      .sort((a, b) => {
+        const na = Number(a);
+        const nb = Number(b);
+        if (!Number.isNaN(na) && !Number.isNaN(nb)) return na - nb;
+        return String(a).localeCompare(String(b));
+      })
+      .map((key) => value[key])
+      .filter((item) => item != null);
+  }
+  return [];
+}
+
 const QUICK_HARVEST_LABEL = "🥚 Panen Cepat";
 function isQuickHarvestCategory(kandang = "") {
   return kandang.includes("Panen Cepat") || kandang.includes("Belum Sortir");
@@ -385,10 +402,11 @@ function BrandSocialIcon({ type }) {
           strokeLinejoin="round"
         />
         <path
-          d="M9.8 9.2c.12-.28.52-.3.68-.3.14 0 .34.02.5.22.16.2.62.92.68 1.08.06.16.08.3-.02.46-.1.16-.14.24-.26.36-.12.12-.24.26-.3.38-.06.12-.04.22.04.36.08.14.56 1.02 1.18 1.34.82.48.98.4 1.14-.08.16-.48.34-.48.56-.18.22 1 .58 1.18.68.18.1.28.16.32.24.04.08.04.36-.08.7"
+          d="M9.2 10.8c0-.3.2-.5.5-.5h.6c.2 0 .4.1.5.3l.4.9c.1.2 0 .5-.2.6l-.5.3c-.1.1-.2.3-.1.5.4.7 1 1.3 1.7 1.7.2.1.4 0 .5-.1l.3-.5c.1-.2.4-.3.6-.2l.9.4c.2.1.3.3.3.5v.6c0 .3-.2.5-.5.5-1.2.1-2.4-.3-3.3-1.2-.9-.9-1.3-2.1-1.2-3.3z"
           stroke="currentColor"
           strokeWidth="1.4"
           strokeLinecap="round"
+          strokeLinejoin="round"
         />
       </svg>
     </span>
@@ -1692,96 +1710,11 @@ export default function App() {
   const [kritikInput, setKritikInput] = useState("");
   const [kritikList, setKritikList] = useState([]);
   const prefsReady = useRef(false);
+  const cloudReady = useRef(false);
 
-  const productMenu = masterProduk
-    .filter((p) => p.active !== false)
-    .map((p) => ({
-      id: p.id,
-      name: p.name,
-      type: p.type || "Pcs",
-      price: parseInt(p.price) || 0,
-      isiTelur: parseInt(p.isiTelur) || 0,
-    }));
-
-  // ─── FIREBASE SYNC ────────────────────────────────────────────────────────
-  useEffect(() => {
-    const kayalaRef = ref(db, "kayala_farm_cloud_data");
-    const unsubscribe = onValue(kayalaRef, (snapshot) => {
-      if (snapshot.exists()) {
-        const d = snapshot.val() || {};
-        setFlockData(
-          d.flockData || {
-            tanggalMasuk: todayStr(),
-            jenisAyam: "Lohman Brown Platinum",
-            umurAwalMinggu: 0,
-            targetAfkirMinggu: 120,
-            totalAyam: 0,
-          }
-        );
-        setProduction(d.production || INITIAL_PRODUCTION);
-        setCashflow(d.cashflow || INITIAL_CASHFLOW);
-        setDeliveries(d.deliveries || INITIAL_DELIVERIES);
-        setOperasional(d.operasional || INITIAL_OPERASIONAL);
-        setActivities(d.activities || INITIAL_ACTIVITIES);
-        setStokBarang(d.stokBarang || INITIAL_STOK_BARANG);
-        setStokPakan(d.stokPakan || INITIAL_STOK_PAKAN);
-        const nextPakan = d.pakanJadwal || INITIAL_PAKAN_JADWAL;
-        setPakanJadwal(normalizePakanJadwal(nextPakan));
-        setPakanJadwalEdit(normalizePakanJadwal(nextPakan));
-        const nextMaster = d.masterProduk || DEFAULT_MASTER_PRODUK;
-        setMasterProduk(nextMaster);
-        setHargaProduk(
-          d.hargaProduk || buildHargaMapFromProduk(nextMaster) || DEFAULT_HARGA
-        );
-        setPelanggan(d.pelanggan || INITIAL_PELANGGAN);
-        setHargaEdit(
-          d.hargaProduk || buildHargaMapFromProduk(nextMaster) || DEFAULT_HARGA
-        );
-        setFlockMutations(d.flockMutations || []);
-        setVendorLinks(d.vendorLinks || INITIAL_VENDOR_LINKS);
-        applyUserPrefs(d.userPrefs || DEFAULT_USER_PREFS);
-        prefsReady.current = true;
-      } else {
-        set(kayalaRef, {
-          flockData: {
-            tanggalMasuk: todayStr(),
-            jenisAyam: "Lohman Brown Platinum",
-            umurAwalMinggu: 0,
-            targetAfkirMinggu: 120,
-            totalAyam: 0,
-          },
-          production: INITIAL_PRODUCTION,
-          cashflow: INITIAL_CASHFLOW,
-          deliveries: INITIAL_DELIVERIES,
-          operasional: INITIAL_OPERASIONAL,
-          activities: INITIAL_ACTIVITIES,
-          stokBarang: INITIAL_STOK_BARANG,
-          stokPakan: INITIAL_STOK_PAKAN,
-          pakanJadwal: INITIAL_PAKAN_JADWAL,
-          masterProduk: DEFAULT_MASTER_PRODUK,
-          hargaProduk: DEFAULT_HARGA,
-          pelanggan: INITIAL_PELANGGAN,
-          vendorLinks: INITIAL_VENDOR_LINKS,
-          flockMutations: [],
-          userPrefs: DEFAULT_USER_PREFS,
-        });
-        applyUserPrefs(DEFAULT_USER_PREFS);
-        prefsReady.current = true;
-      }
-      setIsLoading(false);
-    });
-    return () => unsubscribe();
-  }, []);
-
-  const pushToFirebase = (u = {}) => {
-    const r2 = ref(db, "kayala_farm_cloud_data");
-    const payload = {};
-    Object.entries(u).forEach(([key, value]) => {
-      if (value !== undefined) payload[key] = value;
-    });
-    if (Object.keys(payload).length > 0) {
-      update(r2, payload);
-    }
+  const showToast = (msg) => {
+    setToastMsg(msg);
+    setTimeout(() => setToastMsg(""), 2200);
   };
 
   const applyUserPrefs = (prefs = {}) => {
@@ -1800,6 +1733,26 @@ export default function App() {
       setPagiDone(false);
       setSoreDone(false);
     }
+  };
+
+  const pushToFirebase = (u = {}) => {
+    if (!cloudReady.current) {
+      console.warn("[Kayala] Simpan ditunda — cloud belum siap");
+      return Promise.resolve(false);
+    }
+    const r2 = ref(db, "kayala_farm_cloud_data");
+    const payload = {};
+    Object.entries(u).forEach(([key, value]) => {
+      if (value !== undefined) payload[key] = value;
+    });
+    if (Object.keys(payload).length === 0) return Promise.resolve(true);
+    return update(r2, payload)
+      .then(() => true)
+      .catch((err) => {
+        console.error("[Kayala] Firebase write gagal:", err);
+        showToast("❌ Gagal simpan ke cloud. Cek koneksi internet.");
+        return false;
+      });
   };
 
   const pushUserPrefs = (overrides = {}) => {
@@ -1825,6 +1778,110 @@ export default function App() {
     setDark(nextDark);
     pushUserPrefs({ theme: nextDark ? "dark" : "light" });
   };
+
+  const productMenu = masterProduk
+    .filter((p) => p.active !== false)
+    .map((p) => ({
+      id: p.id,
+      name: p.name,
+      type: p.type || "Pcs",
+      price: parseInt(p.price) || 0,
+      isiTelur: parseInt(p.isiTelur) || 0,
+    }));
+
+  // ─── FIREBASE SYNC ────────────────────────────────────────────────────────
+  useEffect(() => {
+    const kayalaRef = ref(db, "kayala_farm_cloud_data");
+    const initialPayload = {
+      flockData: {
+        tanggalMasuk: todayStr(),
+        jenisAyam: "Lohman Brown Platinum",
+        umurAwalMinggu: 0,
+        targetAfkirMinggu: 120,
+        totalAyam: 0,
+      },
+      production: INITIAL_PRODUCTION,
+      cashflow: INITIAL_CASHFLOW,
+      deliveries: INITIAL_DELIVERIES,
+      operasional: INITIAL_OPERASIONAL,
+      activities: INITIAL_ACTIVITIES,
+      stokBarang: INITIAL_STOK_BARANG,
+      stokPakan: INITIAL_STOK_PAKAN,
+      pakanJadwal: INITIAL_PAKAN_JADWAL,
+      masterProduk: DEFAULT_MASTER_PRODUK,
+      hargaProduk: DEFAULT_HARGA,
+      pelanggan: INITIAL_PELANGGAN,
+      vendorLinks: INITIAL_VENDOR_LINKS,
+      flockMutations: [],
+      userPrefs: DEFAULT_USER_PREFS,
+    };
+
+    const unsubscribe = onValue(kayalaRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const d = snapshot.val() || {};
+        setFlockData(
+          d.flockData || {
+            tanggalMasuk: todayStr(),
+            jenisAyam: "Lohman Brown Platinum",
+            umurAwalMinggu: 0,
+            targetAfkirMinggu: 120,
+            totalAyam: 0,
+          }
+        );
+        setProduction(normalizeFirebaseList(d.production));
+        setCashflow(normalizeFirebaseList(d.cashflow));
+        setDeliveries(normalizeFirebaseList(d.deliveries));
+        setOperasional(normalizeFirebaseList(d.operasional));
+        setActivities(normalizeFirebaseList(d.activities));
+        setStokBarang(
+          normalizeFirebaseList(d.stokBarang).length
+            ? normalizeFirebaseList(d.stokBarang)
+            : INITIAL_STOK_BARANG
+        );
+        setStokPakan(d.stokPakan || INITIAL_STOK_PAKAN);
+        const nextPakan = d.pakanJadwal || INITIAL_PAKAN_JADWAL;
+        setPakanJadwal(normalizePakanJadwal(nextPakan));
+        setPakanJadwalEdit(normalizePakanJadwal(nextPakan));
+        const nextMaster = normalizeFirebaseList(d.masterProduk).length
+          ? normalizeFirebaseList(d.masterProduk)
+          : DEFAULT_MASTER_PRODUK;
+        setMasterProduk(nextMaster);
+        setHargaProduk(
+          d.hargaProduk || buildHargaMapFromProduk(nextMaster) || DEFAULT_HARGA
+        );
+        setPelanggan(normalizeFirebaseList(d.pelanggan));
+        setHargaEdit(
+          d.hargaProduk || buildHargaMapFromProduk(nextMaster) || DEFAULT_HARGA
+        );
+        setFlockMutations(normalizeFirebaseList(d.flockMutations));
+        setVendorLinks(
+          normalizeFirebaseList(d.vendorLinks).length
+            ? normalizeFirebaseList(d.vendorLinks)
+            : INITIAL_VENDOR_LINKS
+        );
+        applyUserPrefs(d.userPrefs || DEFAULT_USER_PREFS);
+        prefsReady.current = true;
+        cloudReady.current = true;
+        setIsLoading(false);
+      } else if (!snapshot.metadata.fromCache) {
+        set(kayalaRef, initialPayload)
+          .then(() => {
+            applyUserPrefs(DEFAULT_USER_PREFS);
+            prefsReady.current = true;
+            cloudReady.current = true;
+            setIsLoading(false);
+          })
+          .catch((err) => {
+            console.error("[Kayala] Inisialisasi cloud gagal:", err);
+            showToast(
+              "❌ Gagal inisialisasi cloud: " + (err.message || "unknown")
+            );
+            setIsLoading(false);
+          });
+      }
+    });
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     const hargaMap = buildHargaMapFromProduk(masterProduk);
@@ -1914,11 +1971,6 @@ export default function App() {
     };
   };
   const timeAge = calculateFlockAge();
-
-  const showToast = (msg) => {
-    setToastMsg(msg);
-    setTimeout(() => setToastMsg(""), 2200);
-  };
 
   // ─── OPS HANDLERS ────────────────────────────────────────────────────────
   const handleFastInput = (type, value) => {

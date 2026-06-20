@@ -34,6 +34,7 @@ self.addEventListener("fetch", (event) => {
 
   if (
     url.hostname.includes("firebaseio.com") ||
+    url.hostname.includes("firebasedatabase.app") ||
     url.hostname.includes("googleapis.com") ||
     url.hostname.includes("gstatic.com")
   ) {

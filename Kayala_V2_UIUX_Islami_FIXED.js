@@ -6,7 +6,7 @@ import { getDatabase, ref, onValue, set, update } from "firebase/database";
 const firebaseConfig = {
   apiKey: "AIzaSyC87ft_44xEx7mQiGNVK9V2ZEOIHEzJwKU",
   authDomain: "kayala-ops.firebaseapp.com",
-  databaseURL: "https://kayala-ops-default-rtdb.firebaseio.com",
+  databaseURL: "https://kayala-ops-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "kayala-ops",
   storageBucket: "kayala-ops.firebasestorage.app",
   messagingSenderId: "796816636214",
