@@ -14,6 +14,7 @@ if ("serviceWorker" in navigator) {
       .register("/sw.js")
       .then((registration) => {
         console.log("[Kayala] Service Worker aktif:", registration.scope);
+        registration.update();
         registration.addEventListener("updatefound", () => {
           const worker = registration.installing;
           if (!worker) return;
@@ -23,6 +24,7 @@ if ("serviceWorker" in navigator) {
               navigator.serviceWorker.controller
             ) {
               console.log("[Kayala] Versi baru tersedia — refresh untuk update.");
+              worker.postMessage({ type: "SKIP_WAITING" });
             }
           });
         });
@@ -30,5 +32,9 @@ if ("serviceWorker" in navigator) {
       .catch((error) => {
         console.error("[Kayala] Gagal mendaftar Service Worker:", error);
       });
+
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      window.location.reload();
+    });
   });
 }
