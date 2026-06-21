@@ -8,7 +8,9 @@ ReactDOM.createRoot(document.getElementById("root")).render(
   </React.StrictMode>
 );
 
-if ("serviceWorker" in navigator) {
+if (import.meta.env.PROD && "serviceWorker" in navigator) {
+  let refreshing = false;
+
   window.addEventListener("load", () => {
     navigator.serviceWorker
       .register("/sw.js")
@@ -34,6 +36,8 @@ if ("serviceWorker" in navigator) {
       });
 
     navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (refreshing) return;
+      refreshing = true;
       window.location.reload();
     });
   });
